@@ -72,10 +72,16 @@ vim.api.nvim_create_autocmd("User", {
   group = augroup,
 })
 
-require("nvim-treesitter.configs").setup {
-  ensure_installed = { "typescript" },
-  sync_install = true,
-}
+local ok, ts_configs = pcall(require, "nvim-treesitter.configs")
+if not ok then
+  ok, ts_configs = pcall(require, "nvim-treesitter.config")
+end
+if ok then
+  ts_configs.setup {
+    ensure_installed = { "typescript" },
+    sync_install = true,
+  }
+end
 
 require("typescript-tools").setup {
   settings = {

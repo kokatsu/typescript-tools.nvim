@@ -129,6 +129,7 @@ require("typescript-tools").setup {
     tsserver_path = nil,
     -- specify a list of plugins to load by tsserver, e.g., for support `styled-components`
     -- (see 💅 `styled-components` support section)
+    -- each entry can be a string (plugin name) or a table with `name`, `location`, and `languages`
     tsserver_plugins = {},
     -- this value is passed to: https://nodejs.org/api/cli.html#--max-old-space-sizesize-in-megabytes
     -- memory limit in megabytes or "auto"(basically no limit)
@@ -269,6 +270,39 @@ require("typescript-tools").setup {
   },
 }
 ```
+
+</details>
+
+#### 🌐 Vue support
+
+<details>
+  <summary>Show more</summary>
+  <p>
+    <br>
+    You can use <code>@vue/typescript-plugin</code> with a custom <code>location</code> and
+    additional <code>languages</code> to enable TypeScript support in Vue files:
+  </p>
+
+```lua
+require("typescript-tools").setup {
+  settings = {
+    tsserver_plugins = {
+      {
+        name = "@vue/typescript-plugin",
+        -- provide the full path to the plugin location
+        location = "/path/to/node_modules/@vue/typescript-plugin",
+        -- specify additional filetypes the plugin should handle
+        languages = { "vue" },
+      },
+    },
+  },
+}
+```
+
+Each plugin entry can be either a simple string (plugin name) or a table with:
+- `name` (required) — the plugin package name
+- `location` (optional) — custom probe path (useful for non-global installs, e.g., Mason)
+- `languages` (optional) — file extensions (without dot) for additional filetypes. Used both to register the LSP for those filetypes and to configure tsserver's `extraFileExtensions`. For example, `{ "vue" }` makes the LSP attach to `.vue` files and tells tsserver to treat them as plugin-managed content
 
 </details>
 

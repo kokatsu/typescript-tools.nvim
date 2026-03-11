@@ -25,12 +25,22 @@ function M.start(dispatchers)
   custom_handlers.setup_lsp_handlers(dispatchers)
 
   return {
-    request = function(method, ...)
+    request = function(method, params, ...)
       if method == c.LspMethods.ExecuteCommand then
-        return internal_commands.handle_command(...)
+        if params.command == c.CustomMethods.TsserverRequestCommand then
+          local args = params.arguments or {}
+          return request_router.route_request(
+            tsserver_syntax,
+            tsserver_semantic,
+            c.CustomMethods.TsserverRequest,
+            { command = args[1], arguments = args[2] },
+            ...
+          )
+        end
+        return internal_commands.handle_command(params, ...)
       end
 
-      return request_router.route_request(tsserver_syntax, tsserver_semantic, method, ...)
+      return request_router.route_request(tsserver_syntax, tsserver_semantic, method, params, ...)
     end,
     notify = function(...)
       return request_router.route_request(tsserver_syntax, tsserver_semantic, ...)

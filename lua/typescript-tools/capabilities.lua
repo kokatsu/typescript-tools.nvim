@@ -17,6 +17,7 @@ local function make_capabilities()
         c.InternalCommands.RequestReferences,
         c.InternalCommands.RequestImplementations,
         c.InternalCommands.InteractiveCodeAction,
+        c.CustomMethods.TsserverRequestCommand,
       },
     },
     renameProvider = {
@@ -40,38 +41,36 @@ local function make_capabilities()
     typeDefinitionProvider = true,
     inlayHintProvider = not utils.version_compare("lt", version, { 4, 4 }),
     foldingRangeProvider = true,
-    semanticTokensProvider = not utils.version_compare("lt", version, { 4, 1 })
-        and {
-          documentSelector = nil,
-          legend = {
-            -- list taken from: https://github.com/microsoft/TypeScript/blob/main/src/services/classifier2020.ts#L10
-            tokenTypes = {
-              "class",
-              "enum",
-              "interface",
-              "namespace",
-              "typeParameter",
-              "type",
-              "parameter",
-              "variable",
-              "enumMember",
-              "property",
-              "function",
-              "member",
-            },
-            -- token from: https://github.com/microsoft/TypeScript/blob/main/src/services/classifier2020.ts#L14
-            tokenModifiers = {
-              "declaration",
-              "static",
-              "async",
-              "readonly",
-              "defaultLibrary",
-              "local",
-            },
-          },
-          full = true,
-        }
-      or false,
+    semanticTokensProvider = not utils.version_compare("lt", version, { 4, 1 }) and {
+      documentSelector = nil,
+      legend = {
+        -- list taken from: https://github.com/microsoft/TypeScript/blob/main/src/services/classifier2020.ts#L10
+        tokenTypes = {
+          "class",
+          "enum",
+          "interface",
+          "namespace",
+          "typeParameter",
+          "type",
+          "parameter",
+          "variable",
+          "enumMember",
+          "property",
+          "function",
+          "member",
+        },
+        -- token from: https://github.com/microsoft/TypeScript/blob/main/src/services/classifier2020.ts#L14
+        tokenModifiers = {
+          "declaration",
+          "static",
+          "async",
+          "readonly",
+          "defaultLibrary",
+          "local",
+        },
+      },
+      full = true,
+    } or false,
     declarationProvider = false,
     implementationProvider = true,
     referencesProvider = true,

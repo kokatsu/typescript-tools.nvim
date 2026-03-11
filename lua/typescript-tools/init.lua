@@ -4,6 +4,35 @@ local plugin_config = require "typescript-tools.config"
 
 local M = {}
 
+---@param plugins (string|{name: string, location?: string, languages?: string[]})[]
+---@return string[]
+function M.build_filetypes(plugins)
+  local default_filetypes = {
+    "javascript",
+    "javascriptreact",
+    "javascript.jsx",
+    "typescript",
+    "typescriptreact",
+    "typescript.tsx",
+  }
+
+  local existing = {}
+  for _, ft in ipairs(default_filetypes) do
+    existing[ft] = true
+  end
+  for _, plugin in ipairs(plugins or {}) do
+    if type(plugin) == "table" and plugin.languages then
+      for _, lang in ipairs(plugin.languages) do
+        if not existing[lang] then
+          table.insert(default_filetypes, lang)
+          existing[lang] = true
+        end
+      end
+    end
+  end
+  return default_filetypes
+end
+
 ---@param config { settings?: table, config?: vim.lsp.Config }
 function M.setup(config)
   config = config or {}
@@ -31,14 +60,7 @@ function M.setup(config)
       cmd = function(...)
         return rpc.start(...)
       end,
-      filetypes = {
-        "javascript",
-        "javascriptreact",
-        "javascript.jsx",
-        "typescript",
-        "typescriptreact",
-        "typescript.tsx",
-      },
+      filetypes = M.build_filetypes(plugin_config.tsserver_plugins),
       root_dir = function(bufnr, on_dir)
         on_dir(util.get_root_dir(bufnr))
       end,

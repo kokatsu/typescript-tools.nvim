@@ -241,6 +241,8 @@ return {
     JsxClosingTag = "typescriptTools/jsxClosingTag",
     FileReferences = "typescriptTools/fileReferences",
     SaveTo = "typescriptTools/saveTo",
+    TsserverRequestCommand = "typescript.tsserverRequest",
+    TsserverRequest = "typescript/tsserverRequest",
   },
   TsserverEvents = {
     ProjectLoadingStart = "projectLoadingStart",

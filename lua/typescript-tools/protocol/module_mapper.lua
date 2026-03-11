@@ -13,6 +13,7 @@ local remapped_methods = {
   [c.CustomMethods.BatchCodeActions] = "text_document.code_action.batch",
   [c.LspMethods.CodeLensResolve] = "text_document.code_lens.resolve",
   [c.CustomMethods.ConfigurePlugin] = "configure_plugin",
+  [c.CustomMethods.TsserverRequest] = "tsserver_request",
   [c.CustomMethods.JsxClosingTag] = "text_document.jsx_close_tag",
   [c.CustomMethods.FileReferences] = "text_document.file_references",
   [c.CustomMethods.SaveTo] = "text_document.save_to",

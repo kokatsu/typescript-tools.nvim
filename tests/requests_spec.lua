@@ -755,4 +755,74 @@ describe("Lsp request", function()
     assert.are.same(#result, 1)
     assert.are.same(result[1].uri, "file://" .. vim.fn.getcwd() .. "/src/imports.ts")
   end)
+
+  it(
+    "should return correct response for " .. custom_methods.TsserverRequest .. " - quickinfo",
+    function()
+      utils.open_file "src/index.ts"
+      utils.wait_for_lsp_initialization()
+
+      local file = vim.fn.getcwd() .. "/src/index.ts"
+      local ret = vim.lsp.buf_request_sync(0, methods.ExecuteCommand, {
+        command = custom_methods.TsserverRequestCommand,
+        arguments = {
+          "quickinfo",
+          { file = file, line = 4, offset = 9 },
+        },
+      })
+
+      local result = lsp_assert.response(ret)
+      assert.is.table(result.body)
+      assert.are.same(result.body.kind, "const")
+      assert.has.match("1", result.body.displayString)
+    end
+  )
+
+  it(
+    "should return correct response for " .. custom_methods.TsserverRequest .. " - navtree",
+    function()
+      utils.open_file "src/index.ts"
+      utils.wait_for_lsp_initialization()
+
+      local file = vim.fn.getcwd() .. "/src/index.ts"
+      local ret = vim.lsp.buf_request_sync(0, methods.ExecuteCommand, {
+        command = custom_methods.TsserverRequestCommand,
+        arguments = {
+          "navtree",
+          { file = file },
+        },
+      })
+
+      local result = lsp_assert.response(ret)
+      assert.is.table(result.body)
+      assert.is.table(result.body.childItems)
+    end
+  )
+
+  it("should return nil for " .. custom_methods.TsserverRequest .. " - missing command", function()
+    utils.open_file "src/index.ts"
+    utils.wait_for_lsp_initialization()
+
+    local ret = vim.lsp.buf_request_sync(0, methods.ExecuteCommand, {
+      command = custom_methods.TsserverRequestCommand,
+      arguments = {},
+    })
+
+    assert.is.table(ret)
+    local _, resp = next(ret)
+    assert.is.Nil(resp.result)
+  end)
+
+  it("should advertise " .. custom_methods.TsserverRequestCommand .. " capability", function()
+    utils.open_file "src/index.ts"
+    utils.wait_for_lsp_initialization()
+
+    local clients = vim.lsp.get_clients {
+      name = require("typescript-tools.config").plugin_name,
+    }
+    assert.is.True(#clients >= 1)
+
+    local commands = clients[1].server_capabilities.executeCommandProvider.commands
+    assert.is.True(vim.tbl_contains(commands, custom_methods.TsserverRequestCommand))
+  end)
 end)

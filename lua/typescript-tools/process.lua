@@ -16,6 +16,7 @@ local is_win = uv.os_uname().version:find "Windows"
 ---@field private stderr uv.uv_pipe_t
 ---@field private args string[]
 ---@field private cancellation_dir Path
+---@field private shim_dirs string[]
 ---@field private on_response fun(response: table)
 ---@field private on_exit fun(code: number, signal: number)
 
@@ -51,14 +52,73 @@ function Process.new(type, on_response, on_exit)
   -- stylua: ignore end
   self.on_response = on_response
   self.on_exit = on_exit
+  self.shim_dirs = {}
 
-  local plugins_path = tsserver_provider:get_plugins_path()
+  local plugin_names = {}
+  local probe_locations = {}
 
-  if plugins_path and #plugin_config.tsserver_plugins > 0 then
-    table.insert(self.args, "--pluginProbeLocations")
-    table.insert(self.args, plugins_path:absolute())
+  local global_plugins_path = tsserver_provider:get_plugins_path()
+  if global_plugins_path then
+    table.insert(probe_locations, global_plugins_path:absolute())
+  end
+
+  for _, plugin in ipairs(plugin_config.tsserver_plugins) do
+    local name = plugin.name or plugin
+    if plugin.location then
+      if uv.fs_stat(plugin.location .. "/package.json") then
+        -- tsserver only accepts package names in --globalPlugins (not absolute paths).
+        -- It resolves plugins via: <probe_location>/node_modules/<package_name>.
+        -- For non-standard layouts (e.g. Nix store), create a temp shim with a symlink.
+        local shim_dir = uv.fs_mkdtemp(Path:new(uv.os_tmpdir(), "tsplug_XXXXXX"):absolute())
+        if not shim_dir then
+          local _ = log.warn()
+            and log.warn("tsserver", "Failed to create shim dir for plugin: ", name)
+          goto continue
+        end
+        table.insert(self.shim_dirs, shim_dir)
+        local nm_path = shim_dir .. "/node_modules"
+        local ok, err = uv.fs_mkdir(nm_path, tonumber("755", 8))
+        if not ok then
+          local _ = log.warn()
+            and log.warn("tsserver", "Failed to create node_modules in shim dir: ", err)
+          goto continue
+        end
+        -- Handle scoped packages (@scope/name)
+        local scope = name:match "^(@[^/]+)/"
+        if scope then
+          ok, err = uv.fs_mkdir(nm_path .. "/" .. scope, tonumber("755", 8))
+          if not ok then
+            local _ = log.warn()
+              and log.warn("tsserver", "Failed to create scope dir in shim: ", err)
+            goto continue
+          end
+        end
+        ok, err = uv.fs_symlink(plugin.location, nm_path .. "/" .. name)
+        if not ok then
+          local _ = log.warn()
+            and log.warn("tsserver", "Failed to symlink plugin in shim dir: ", err)
+          goto continue
+        end
+        table.insert(probe_locations, shim_dir)
+      else
+        if not uv.fs_stat(plugin.location) then
+          local _ = log.warn()
+            and log.warn("tsserver", "plugin.location does not exist: ", plugin.location)
+        end
+        table.insert(probe_locations, plugin.location)
+      end
+    end
+    table.insert(plugin_names, name)
+    ::continue::
+  end
+
+  if #plugin_names > 0 then
+    if #probe_locations > 0 then
+      table.insert(self.args, "--pluginProbeLocations")
+      table.insert(self.args, table.concat(probe_locations, ","))
+    end
     table.insert(self.args, "--globalPlugins")
-    table.insert(self.args, table.concat(plugin_config.tsserver_plugins, ","))
+    table.insert(self.args, table.concat(plugin_names, ","))
   end
 
   if plugin_config.tsserver_logs ~= "off" then
@@ -143,6 +203,7 @@ function Process:start()
   local handle, pid = uv.spawn(command, args, function(...)
     self:close_pipes()
     self.handle:close()
+    self:cleanup_shim_dirs()
     self.on_exit(...)
   end)
 
@@ -217,6 +278,48 @@ function Process:terminate()
   if self.handle then
     self.handle:kill(15)
   end
+  self:cleanup_shim_dirs()
+end
+
+---@private
+function Process:cleanup_shim_dirs()
+  for _, dir in ipairs(self.shim_dirs) do
+    local nm_path = dir .. "/node_modules"
+    local handle = uv.fs_scandir(nm_path)
+    if handle then
+      while true do
+        local name, typ = uv.fs_scandir_next(handle)
+        if not name then
+          break
+        end
+        local entry = nm_path .. "/" .. name
+        -- fs_scandir_next may return nil/unknown type on some platforms; use fs_stat as fallback
+        if not typ or typ == "unknown" then
+          local stat = uv.fs_lstat(entry)
+          typ = stat and stat.type or "link"
+        end
+        if typ == "directory" then
+          -- Scoped package: remove symlink inside scope dir, then scope dir
+          local scope_handle = uv.fs_scandir(entry)
+          if scope_handle then
+            while true do
+              local inner_name = uv.fs_scandir_next(scope_handle)
+              if not inner_name then
+                break
+              end
+              uv.fs_unlink(entry .. "/" .. inner_name)
+            end
+          end
+          uv.fs_rmdir(entry)
+        else
+          uv.fs_unlink(entry)
+        end
+      end
+    end
+    uv.fs_rmdir(nm_path)
+    uv.fs_rmdir(dir)
+  end
+  self.shim_dirs = {}
 end
 
 ---@return boolean

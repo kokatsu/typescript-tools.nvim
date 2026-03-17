@@ -62,7 +62,7 @@ describe("Lsp request", function()
   it(
     "should return correct response for " .. methods.Definition .. " - source definition",
     function()
-      local version = v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
+      local version = vim.env.TEST_TYPESCRIPT_VERSION and v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
       if version and v.lt(version, { 4, 7 }) then
         return
       end
@@ -532,7 +532,7 @@ describe("Lsp request", function()
 
     local result = lsp_assert.response(ret)
 
-    local version = v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
+    local version = vim.env.TEST_TYPESCRIPT_VERSION and v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
 
     -- INFO: TS 4.2 return completly different response than other versions IDK why,
     -- maybe it's a bug of this version
@@ -709,7 +709,7 @@ describe("Lsp request", function()
     assert.is.table(result)
     assert.is.table(result.command)
 
-    local version = v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
+    local version = vim.env.TEST_TYPESCRIPT_VERSION and v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
 
     if version and v.lt(version, { 4, 5 }) then
       assert.is.same(result.command.title, "references: 1")
@@ -738,7 +738,7 @@ describe("Lsp request", function()
   end)
 
   it("should return correct response for " .. custom_methods.FileReferences, function()
-    local version = v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
+    local version = vim.env.TEST_TYPESCRIPT_VERSION and v.parse(vim.env.TEST_TYPESCRIPT_VERSION)
     if version and v.lt(version, { 4, 2 }) then
       utils.print_skip "`fileReferences` request isn't supported in typescript version below 4.2"
       return

@@ -72,15 +72,15 @@ vim.api.nvim_create_autocmd("User", {
   group = augroup,
 })
 
-local ok, ts_configs = pcall(require, "nvim-treesitter.configs")
-if not ok then
-  ok, ts_configs = pcall(require, "nvim-treesitter.config")
-end
-if ok then
-  ts_configs.setup {
-    ensure_installed = { "typescript" },
-    sync_install = true,
-  }
+local ts_install_dir = vim.fs.joinpath(vim.fn.stdpath "data" --[[@as string]], "site")
+require("nvim-treesitter.config").setup { install_dir = ts_install_dir }
+
+local has_parser = pcall(vim.treesitter.language.inspect, "typescript")
+if not has_parser then
+  vim.cmd "TSInstall! typescript"
+  vim.wait(60000, function()
+    return pcall(vim.treesitter.language.inspect, "typescript")
+  end, 500)
 end
 
 require("typescript-tools").setup {

@@ -9,7 +9,7 @@ function M.setup_code_lens_autocmds()
   local augroup = vim.api.nvim_create_augroup("TypescriptToolsCodeLensGroup", { clear = true })
 
   common.create_lsp_attach_augcmd(function()
-    pcall(vim.lsp.codelens.refresh)
+    pcall(vim.lsp.codelens.enable, true)
 
     api.nvim_create_autocmd({ "BufEnter", "InsertLeave", "CursorHold" }, {
       pattern = common.extensions_pattern,
@@ -25,7 +25,7 @@ function M.setup_code_lens_autocmds()
           return
         end
 
-        pcall(vim.lsp.codelens.refresh, { bufnr = e.buf })
+        pcall(vim.lsp.codelens.enable, true, { bufnr = e.buf })
       end,
       group = augroup,
     })
